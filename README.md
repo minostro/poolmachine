@@ -3,6 +3,11 @@ Pool Machine
 
 Yet Another Pool Application for Erlang projects.
 
+Sequence Chart
+-----
+
+![alt text](https://github.com/minostro/poolmachine/raw/master/docs/sequence_charg.png "Logo Title Text 1")
+
 How to use it
 -----
 
