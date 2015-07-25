@@ -1,6 +1,10 @@
 -module(poolmachine).
 
--export([start_pool/1, new_task/3, schedule/1, schedule/2]).
+-export([start_link/0, start_pool/1, new_task/3, schedule/1, schedule/2]).
+
+-spec start_link() -> {ok, pid()} | {error, any()}.
+start_link() ->
+  poolmachine_sup:start_link().
 
 -spec start_pool(atom()) -> {ok, pid()} | {error, any()}.
 start_pool(Name) ->

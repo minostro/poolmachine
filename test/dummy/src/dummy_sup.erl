@@ -20,7 +20,7 @@
 %%====================================================================
 
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+  supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %%====================================================================
 %% Supervisor callbacks
@@ -28,7 +28,15 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-    {ok, { {one_for_all, 0, 1}, []} }.
+	ChildSpec = {
+		poolmachine,
+    {poolmachine, start_link, []},
+    permanent,
+    brutal_kill,
+    supervisor,
+    []
+	},
+  {ok, {{one_for_all, 0, 1}, [ChildSpec]}}.
 
 %%====================================================================
 %% Internal functions

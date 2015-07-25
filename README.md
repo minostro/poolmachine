@@ -54,9 +54,14 @@ call({N1, N2}, RespondTo) ->
 
 As you can see, the `subtract` module is in charge to communicate the result back.
 
+Supervision Tree
+-----
+![Supervision Tree](https://github.com/minostro/poolmachine/blob/master/docs/supervision-tree.png "Supervision Tree")
+
+
 Sequence Chart
 -----
-![Sequence Chart](https://github.com/minostro/poolmachine/blob/master/docs/sequence_chart.png "Sequence Chart")
+![Sequence Chart](https://github.com/minostro/poolmachine/blob/master/docs/sequence-chart.png "Sequence Chart")
 
 
 Acknowledgements
