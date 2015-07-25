@@ -3,11 +3,6 @@ Pool Machine
 
 Yet Another Pool Application for Erlang projects.
 
-Sequence Chart
------
-
-![alt text](https://github.com/minostro/poolmachine/raw/master/docs/sequence_charg.png "Logo Title Text 1")
-
 How to use it
 -----
 
@@ -58,6 +53,10 @@ call({N1, N2}, RespondTo) ->
 ```
 
 As you can see, the `subtract` module is in charge to communicate the result back.
+
+Sequence Chart
+-----
+![Sequence Chart](https://github.com/minostro/poolmachine/blob/master/docs/sequence_chart.png "Sequence Chart")
 
 
 Acknowledgements
