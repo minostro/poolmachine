@@ -1,0 +1,11 @@
+{application, 'poolmachine',
+ [{description, "Yet Another Pool Application for Erlang projects."},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []}
+ ]}.
