@@ -64,6 +64,39 @@ Sequence Chart
 ![Sequence Chart](https://github.com/minostro/poolmachine/blob/master/docs/sequence-chart.png "Sequence Chart")
 
 
+New API
+-----
+
+```erlang
+poolmachine:start_pool(salesforce, [{max_pool_size, infinity},
+                        {keep_workers_alive, true}]).
+Task = poolmachine:new_task('salesforce_task', self()).
+poolmachine:schedule(salesforce, Task).
+```
+
+```erlang
+-module('salesforce_task').
+-behaviour(poolmachine_task_behaviour).
+
+init() ->
+  [SessionId, SessionToken] = ...
+  {ok, [{session_id, SessionId}, {session_token, SessionToken}]}.
+
+call(Arguments, RespondTo, State) ->
+  do_some_stuff().
+```
+
+```erlang
+-type poolmachine_task() :: #{
+  'module' => atom(),
+  'respond_to' => pid(),
+  'max_retries' => integer(),
+  'attempts' => integer(),
+  'client_data' => any()
+}.
+
+```
+
 Acknowledgements
 =====
 I would like to thanks [francisco rojas](https://github.com/frojasg) for the ideas and discussions around this topic.  
