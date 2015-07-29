@@ -6,7 +6,7 @@
 -export([start_link/1]).
 
 %% Supervisor callbacks
--export([init/1, start_child/2]).
+-export([init/1, start_child/3]).
 
 -define(SERVER, ?MODULE).
 
@@ -17,8 +17,8 @@
 start_link(Name) ->
   supervisor:start_link({local, worker_sup_name(Name)}, ?MODULE, []).
 
-start_child(Name, Task) ->
-  supervisor:start_child(worker_sup_name(Name), Task).
+start_child(Name, Task, KeepWorkerAlive) ->
+  supervisor:start_child(worker_sup_name(Name), [Task, KeepWorkerAlive]).
 %%====================================================================
 %% Supervisor callbacks
 %%====================================================================
