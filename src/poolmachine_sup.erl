@@ -23,7 +23,7 @@ start_link() ->
 
 init([]) ->
   SupFlags = {one_for_one,1, 5},
-  TaskServerSpec = {
+  PoolSupSpec = {
     poolmachine_pool_sup,
     {poolmachine_pool_sup, start_link, []},
     temporary,
@@ -31,4 +31,4 @@ init([]) ->
     worker,
     []
   },
-  {ok, {SupFlags, [TaskServerSpec]}}.
+  {ok, {SupFlags, [PoolSupSpec]}}.
