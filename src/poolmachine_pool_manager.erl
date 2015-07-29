@@ -1,11 +1,11 @@
--module(poolmachine_worker).
+-module(poolmachine_pool_manager).
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/1, cast/2]).
+-export([start_link/1, schedule/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -15,25 +15,26 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-start_link(Task) ->
-  gen_server:start_link(?MODULE, [Task], []).
+start_link(Name) ->
+  gen_server:start_link({local, pool_manager_name(Name)}, ?MODULE, [Name], []).
 
-cast(Pid, Message) ->
-  gen_server:cast(Pid, Message).
+%TODO: we might want to move into the process itself when we want to
+%restrict the amount of workers or keep a reference
+schedule(Name, Task) ->
+  gen_server:cast(pool_manager_name(Name), {perform, Task}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
-init([Task]) ->
-  {ok, Result} = run_init_function(Task),
-  {ok, poolmachine_task:update(Task, client_data, Result)}.
+init([Name]) ->
+  {ok, Name}.
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
-handle_cast(perform, Task) ->
-  run_call_function(Task),
-  handle_worker_done(Task);
+handle_cast({perform, Task}, Name) ->
+  poolmachine_worker_sup:start_child(Name, Task),
+  {noreply, Name};
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -49,16 +50,5 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-run_init_function(Task) ->
-  apply(maps:get(module, Task), init, []).
-
-run_call_function(Task) ->
-  apply(maps:get(module, Task), call, maps:get(call_args, Task)).
-
-handle_worker_done(Task) ->
-  handle_worker_done(Task, maps:get(keep_worker_alive, Task)).
-
-handle_worker_done(Task, true) ->
-  {noreply, Task};
-handle_worker_done(Task, false) ->
-  {stop, normal, Task}.
+pool_manager_name(Name) ->
+  list_to_atom(Name ++ "_pool_manager").

@@ -1,12 +1,12 @@
--module(poolmachine_pool_sup).
+-module(poolmachine_worker_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_pool/1]).
+-export([start_link/1]).
 
 %% Supervisor callbacks
--export([init/1]).
+-export([init/1, start_child/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -14,12 +14,11 @@
 %% API functions
 %%====================================================================
 
-start_link() ->
-  supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+start_link(Name) ->
+  supervisor:start_link({local, worker_sup_name(Name)}, ?MODULE, []).
 
-start_pool(PoolName) ->
-  supervisor:start_child(?SERVER, [PoolName]).
-
+start_child(Name, Task) ->
+  supervisor:start_child(worker_sup_name(Name), Task).
 %%====================================================================
 %% Supervisor callbacks
 %%====================================================================
@@ -27,12 +26,15 @@ start_pool(PoolName) ->
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
   SupFlags = {simple_one_for_one,1, 5},
-  PoolSpec = {
-    poolmachine_pool,
-    {poolmachine_pool, start_link, []},
+  TaskServerSpec = {
+    poolmachine_worker,
+    {poolmachine_worker, start_link, []},
     temporary,
     brutal_kill,
     worker,
     []
   },
-  {ok, {SupFlags, [PoolSpec]}}.
+  {ok, {SupFlags, [TaskServerSpec]}}.
+
+worker_sup_name(Name) ->
+  list_to_atom(Name ++ "_worker_sup").
