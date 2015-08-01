@@ -1,0 +1,3 @@
+%-*-Erlang-*-
+{build, "make eqc-ci"}.
+{test_path, "_build/default/lib/poolmachine/ebin"}.
