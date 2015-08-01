@@ -5,8 +5,7 @@
   {mod, {'poolmachine_app', []}}, 
   {applications,
    [kernel,
-    stdlib,
-    eqc
+    stdlib
    ]},
   {env,[]},
   {modules, []}
