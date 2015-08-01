@@ -28,15 +28,7 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-	ChildSpec = {
-		poolmachine,
-    {poolmachine, start_link, []},
-    permanent,
-    brutal_kill,
-    supervisor,
-    []
-	},
-  {ok, {{one_for_all, 0, 1}, [ChildSpec]}}.
+  {ok, {{one_for_all, 0, 1}, []}}.
 
 %%====================================================================
 %% Internal functions
