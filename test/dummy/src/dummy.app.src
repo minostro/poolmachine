@@ -5,7 +5,8 @@
   {mod, {'dummy_app', []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    poolmachine
    ]},
   {env,[]},
   {modules, []}
