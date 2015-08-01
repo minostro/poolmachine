@@ -1,7 +1,6 @@
 -module(test_eqc).
 -compile(export_all).
 -include_lib("eqc/include/eqc.hrl").
--compile({parse_transform,eqc_cover}).
 
 prop_seq() ->
   ?FORALL({From, To}, {int(), int()},
