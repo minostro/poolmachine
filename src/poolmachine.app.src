@@ -2,6 +2,7 @@
  [{description, "Yet Another Pool Application for Erlang projects."},
   {vsn, "0.1.0"},
   {registered, []},
+  {mod, {'poolmachine_app', []}}, 
   {applications,
    [kernel,
     stdlib
