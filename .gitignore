@@ -18,3 +18,4 @@ _tdeps
 logs
 _build
 *.DS_Store
+test/dummy/rebar.lock
