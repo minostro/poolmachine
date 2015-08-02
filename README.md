@@ -34,13 +34,13 @@ Once your application is up and running, `poolmachine_sup` will automatically sp
 Task on the default pool by doing:
 
 ```erlang
-Task = poolmanager:new_task(subtract, {2, 1}, self()),
+Task = poolmanager:new_task(subtract, {2, 1}),
 poolmanager:schedule(Task),
 flush(),
 Shell got {ok, 1}
 ```
 
-`new_task` receives a callback module (`subtract`), the arguments that will be used when running (calling `call`) the task (`{2, 1}`), and a pid to send the result back (`self()`).
+`new_task` receives a callback module (`subtract`), and the arguments that will be used when running (calling `call`) the task (`{2, 1}`).
 
 You have to define the `subtract` module as follows:
 
@@ -72,7 +72,7 @@ New API
 ```erlang
 poolmachine:start_pool(salesforce, [{max_pool_size, infinity},
                         {keep_workers_alive, true}]).
-Task = poolmachine:new_task('salesforce_task', self()).
+Task = poolmachine:new_task('salesforce_task', {id, "1"}).
 poolmachine:schedule(salesforce, Task).
 ```
 

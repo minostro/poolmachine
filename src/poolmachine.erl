@@ -10,9 +10,9 @@ start_link() ->
 start_pool(Name, Properties) ->
   poolmachine_pool_sup:start_pool(Name, Properties).
 
--spec new_task(atom(), list(any()), pid()) -> poolmachine_task:task().
-new_task(Module, CallArguments, RespondTo) ->
-  poolmachine_task:new(Module, CallArguments, RespondTo).
+-spec new_task(atom(), list(any()) -> poolmachine_task:task().
+new_task(Module, CallArguments) ->
+  poolmachine_task:new(Module, CallArguments, self()).
 
 -spec schedule(atom(), poolmachine_task:task()) -> {ok, pid()} | {error, any()}.
 schedule(PoolName, Task) ->
