@@ -1,4 +1,4 @@
-On the understanding about using ADT vs exposing implementation details about the underlying representation.
+On the understanding about using "user-defined types" vs using primitive types together.
 
 ```erlang
 -module(tasks).
@@ -38,3 +38,4 @@ Questions
 
 1. Does this mean that `do_something_with` should be implemented in the `tasks` module?.
 2. Does this mean that `do_something_with` should be implemented as a process cause that's how you model `activities` in Erlang?
+3. By defining an user-defined type or ADT, clients lose the ability to destructure --do pattern matching-- `Task`.  A `Task` can only be destructured by its module (`tasks`).  This might seem obvious at first, but it took me a while to learn that.  The same situation happen in Erlang with its `Queue` implementation.
