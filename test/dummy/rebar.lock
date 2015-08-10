@@ -1,4 +1,4 @@
 [{<<"poolmachine">>,
   {git,"https://github.com/minostro/poolmachine.git",
-       {ref,"7ecc702e7806627e2a413d16ec5e7299aedca434"}},
+       {ref,"77ce6c45b197ee10caacd001b692ff468cba3320"}},
   0}].

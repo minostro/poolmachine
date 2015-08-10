@@ -26,9 +26,17 @@ init([]) ->
   PoolSupSpec = {
     poolmachine_pool_sup,
     {poolmachine_pool_sup, start_link, []},
-    temporary,
+    permanent,
     brutal_kill,
-    worker,
+    supervisor,
     []
   },
-  {ok, {SupFlags, [PoolSupSpec]}}.
+  PoolControllerSpec = {
+    poolmachine_controller,
+    {poolmachine_controller, start_link, []},
+    permanent,
+    brutal_kill,
+    supervisor,
+    []
+  },
+  {ok, {SupFlags, [PoolSupSpec, PoolControllerSpec]}}.
