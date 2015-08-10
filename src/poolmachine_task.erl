@@ -1,6 +1,6 @@
 -module(poolmachine_task).
 
--export([new/3, mfa/2, set/3]).
+-export([new/3, mfa/2, set/3, increase_attempt/1, can_be_retried/1]).
 
 -type poolmachine_task() :: #{
   'module' => atom(),
@@ -14,7 +14,7 @@
 -export_type([poolmachine_task/0]).
 
 new(Module, CallArgs, RespondTo) ->
-  %TODO: max_retries can be possible be consumed from application env or from the pool
+  %TODO: max_retries can be consumed from application env or from the pool
   #{
     module => Module,
     call_args => CallArgs,
@@ -36,3 +36,9 @@ set(Task, client_data, Data) ->
   maps:update(client_data, Data, Task);
 set(Task, client_result, Data) ->
   maps:update(client_result, Data, Task).
+
+increase_attempt(#{attempts := Attempts} = Task) ->
+  Task#{attempts => Attempts + 1}.
+
+can_be_retried(#{attempts := Attempts, max_retries := MaxRetries} = Task) ->
+  Attempts < MaxRetries.

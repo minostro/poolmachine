@@ -35,11 +35,11 @@ start_worker_sup(Pid) ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([Name, Properties]) ->
-  SupFlags = {one_for_one,1, 5},
+  SupFlags = {one_for_all,1, 5},
   PoolManagerSpec = {
     poolmachine_pool_manager,
     {poolmachine_pool_manager, start_link, [self(), Name, Properties]},
-    transient,
+    permanent,
     brutal_kill,
     worker,
     []
