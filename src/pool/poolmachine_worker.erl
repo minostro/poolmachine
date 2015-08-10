@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/2, cast/2]).
+-export([start_link/0, cast/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -20,8 +20,8 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-start_link(Task, KeepAlive) ->
-  gen_server:start_link(?MODULE, [Task, KeepAlive], []).
+start_link() ->
+  gen_server:start_link(?MODULE, [], []).
 
 cast(Pid, Message) ->
   gen_server:cast(Pid, Message).
@@ -29,13 +29,14 @@ cast(Pid, Message) ->
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
-init([Task, KeepAlive]) ->
-  {ok, Result} = run_init_function(Task),
-  UpdatedTask = poolmachine_task:update(Task, client_data, Result),
-  {ok, #{task => UpdatedTask, keep_alive => KeepAlive}}.
+init([]) ->
+  {ok, undefined}.
 
-handle_cast(perform, #{task := Task} = State) ->
-  run_call_function(Task),
+handle_cast({initialize, Task, KeepAlive}, State) ->
+  initialize_worker(Task, KeepAlive, State);
+handle_cast(call, #{task := Task} = State) ->
+  NewTask = run(call, Task),
+  run(on_success, NewTask),
   handle_worker_done(State).
 
 handle_call(_Request, _From, State) ->
@@ -53,16 +54,25 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-run_init_function(Task) ->
-  apply(maps:get(module, Task), init, []).
+initialize_worker(Task, KeepAlive, undefined) ->
+  NewTask = run(initialize, Task),
+  {noreply, #{task => NewTask, keep_alive => KeepAlive}};
+initialize_worker(_Task, _KeepAlive, State) ->
+  {noreply, State}.
 
-run_call_function(#{call_args := CallArgs, respond_to := RespondTo, client_data := ClientData} = Task) ->
-  apply(maps:get(module, Task), call, [CallArgs, RespondTo, ClientData]).
+run(initialize, Task) ->
+  {M, F, A} = poolmachine_task:mfa(Task, initialize),
+  {ok, Result} = apply(M, F, A),
+  poolmachine_task:set(Task, client_data, Result);
+run(call, Task) ->
+  {M, F, A} = poolmachine_task:mfa(Task, call),
+  {ok, Result} = apply(M, F, A),
+  poolmachine_task:set(Task, client_result, Result);
+run(on_success, Task) ->
+  {M, F, A} = poolmachine_task:mfa(Task, on_success),
+  apply(M, F, A).
 
-handle_worker_done(#{keep_alive := KeepAlive} = State) ->
-  handle_worker_done(State, KeepAlive).
-
-handle_worker_done(State, true) ->
+handle_worker_done(#{keep_alive := true} = State) ->
   {noreply, State};
-handle_worker_done(State, false) ->
+handle_worker_done(#{keep_alive := false} = State) ->
   {stop, normal, State}.
