@@ -1,4 +1,4 @@
--module(poolmachine_worker).
+-module(poolmachine_pool_worker).
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 

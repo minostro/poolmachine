@@ -1,4 +1,4 @@
--module(poolmachine_worker_sup).
+-module(poolmachine_pool_worker_sup).
 
 -behaviour(supervisor).
 
@@ -6,7 +6,7 @@
 -export([start_link/1]).
 
 %% Supervisor callbacks
--export([init/1, start_child/3]).
+-export([init/1, start_child/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -17,8 +17,8 @@
 start_link(Name) ->
   supervisor:start_link({local, worker_sup_name(Name)}, ?MODULE, []).
 
-start_child(Name, Task, KeepWorkerAlive) ->
-  supervisor:start_child(worker_sup_name(Name), [Task, KeepWorkerAlive]).
+start_child(Name) ->
+  supervisor:start_child(worker_sup_name(Name), []).
 %%====================================================================
 %% Supervisor callbacks
 %%====================================================================
@@ -27,8 +27,8 @@ start_child(Name, Task, KeepWorkerAlive) ->
 init([]) ->
   SupFlags = {simple_one_for_one,1, 5},
   TaskServerSpec = {
-    poolmachine_worker,
-    {poolmachine_worker, start_link, []},
+    poolmachine_pool_worker,
+    {poolmachine_pool_worker, start_link, []},
     temporary,
     brutal_kill,
     worker,

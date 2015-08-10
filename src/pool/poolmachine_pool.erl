@@ -33,8 +33,8 @@ init([Name, Properties]) ->
     []
   },
   WorkerSupSpec = {
-    poolmachine_worker_sup,
-    {poolmachine_worker_sup, start_link, [Name]},
+    poolmachine_pool_worker_sup,
+    {poolmachine_pool_worker_sup, start_link, [Name]},
     temporary,
     brutal_kill,
     worker,
