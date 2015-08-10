@@ -28,7 +28,7 @@ start_link(Name, Properties) ->
 %TODO: we might want to move into the process itself when we want to
 %restrict the amount of workers or keep a reference
 schedule(Name, Task) ->
-  gen_server:cast(pool_manager_name(Name), {perform, Task}).
+  gen_server:cast(pool_manager_name(Name), {call, Task}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -41,9 +41,10 @@ init([Name, Properties]) ->
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
-handle_cast({perform, Task}, #{pool_name := Name, keep_workers_alive := KeepWorkerAlive} = State) ->
-  {ok, Pid} = poolmachine_worker_sup:start_child(Name, Task, KeepWorkerAlive),
-  poolmachine_worker:cast(Pid, perform),
+handle_cast({call, Task}, #{pool_name := Name, keep_workers_alive := KeepWorkerAlive} = State) ->
+  {ok, Pid} = poolmachine_pool_worker_sup:start_child(Name),
+  poolmachine_pool_worker:cast(Pid, {initialize, Task, KeepWorkerAlive}),
+  poolmachine_pool_worker:cast(Pid, call),
   {noreply, State}.
 
 handle_info(_Info, State) ->

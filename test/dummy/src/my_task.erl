@@ -12,6 +12,8 @@ call(Arguments, State) ->
   {ok, 1}.
 
 on_success(Result, RespondTo) ->
+  erlang:display(Result),
+  erlang:display(RespondTo),
   RespondTo ! {success, Result}.
 
 on_error(Error, RespondTo) ->
