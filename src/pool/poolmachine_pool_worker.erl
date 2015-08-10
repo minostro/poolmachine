@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/0, cast/2]).
+-export([start_link/0, initialize/3, run/1]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -23,8 +23,11 @@
 start_link() ->
   gen_server:start_link(?MODULE, [], []).
 
-cast(Pid, Message) ->
-  gen_server:cast(Pid, Message).
+initialize(Pid, Task, KeepWorkerAlive) ->
+  gen_server:cast(Pid, {initialize, Task, KeepWorkerAlive}).
+
+run(Pid) ->
+  gen_server:cast(Pid, call).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
