@@ -3,16 +3,17 @@
 -define(SERVER, ?MODULE).
 
 -type state() :: #{
-  pool_name => string(),
+  pool_sup_pid => pid(),
   keep_workers_alive => boolean(),
-  max_pool_size => infinity | non_neg_integer()
+  max_pool_size => infinity | non_neg_integer(),
+  pool_worker_sup_pid => undefined | pid()
 }.
 
 
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/2, schedule/2]).
+-export([start_link/3, schedule/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -22,31 +23,40 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-start_link(Name, Properties) ->
-  gen_server:start_link({local, pool_manager_name(Name)}, ?MODULE, [Name, Properties], []).
+start_link(PoolSupPid, Name, Properties) ->
+  gen_server:start_link(?MODULE, [PoolSupPid, Name, Properties], []).
 
 %TODO: we might want to move into the process itself when we want to
 %restrict the amount of workers or keep a reference
-schedule(Name, Task) ->
-  gen_server:cast(pool_manager_name(Name), {call, Task}).
+schedule(Pid, Task) ->
+  gen_server:cast(Pid, {call, Task}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
-init([Name, Properties]) ->
+init([PoolSupPid, PoolName, Properties]) ->
   KeepWorkersAlive = proplists:get_value(keep_workers_alive, Properties, false),
   MaxPoolSize = proplists:get_value(max_pool_size, Properties, infinity),
-  {ok, #{pool_name => Name, keep_workers_alive => KeepWorkersAlive, max_pool_size => MaxPoolSize}}.
+  self() ! {start_pool_worker_sup},
+  self() ! {register_pool, PoolName},
+  {ok, #{pool_sup_pid => PoolSupPid, keep_workers_alive => KeepWorkersAlive, max_pool_size => MaxPoolSize, pool_worker_sup_pid => undefined}}.
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
-handle_cast({call, Task}, #{pool_name := Name, keep_workers_alive := KeepWorkerAlive} = State) ->
-  {ok, Pid} = poolmachine_pool_worker_sup:start_child(Name),
+handle_cast({call, Task}, #{pool_worker_sup_pid := SupPid, keep_workers_alive := KeepWorkerAlive} = State) ->
+  {ok, Pid} = poolmachine_pool_worker_sup:start_child(SupPid),
+  %%TODO: pool_worker should expose initialize, and call as part of its public API.
   poolmachine_pool_worker:cast(Pid, {initialize, Task, KeepWorkerAlive}),
   poolmachine_pool_worker:cast(Pid, call),
   {noreply, State}.
 
+handle_info({start_pool_worker_sup}, #{pool_sup_pid := PoolSupPid} =  State) ->
+  {ok, Pid} = start_pool_worker_sup(PoolSupPid),
+  {noreply, State#{pool_worker_sup_pid => Pid}};
+handle_info({register_pool, PoolName}, State) ->
+  poolmachine_controller:register_pool(PoolName, self()),
+  {noreply, State};
 handle_info(_Info, State) ->
   {noreply, State}.
 
@@ -59,6 +69,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-pool_manager_name(Name) ->
-  list_to_atom(Name ++ "_pool_manager").
-
+start_pool_worker_sup(SupPid) ->
+  {ok, Pid} = poolmachine_pool:start_worker_sup(SupPid),
+  link(Pid),
+  {ok, Pid}.

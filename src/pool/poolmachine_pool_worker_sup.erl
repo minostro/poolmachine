@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/1]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1, start_child/1]).
@@ -14,11 +14,11 @@
 %% API functions
 %%====================================================================
 
-start_link(Name) ->
-  supervisor:start_link({local, worker_sup_name(Name)}, ?MODULE, []).
+start_link() ->
+  supervisor:start_link(?MODULE, []).
 
-start_child(Name) ->
-  supervisor:start_child(worker_sup_name(Name), []).
+start_child(Pid) ->
+  supervisor:start_child(Pid, []).
 %%====================================================================
 %% Supervisor callbacks
 %%====================================================================
@@ -35,6 +35,3 @@ init([]) ->
     []
   },
   {ok, {SupFlags, [TaskServerSpec]}}.
-
-worker_sup_name(Name) ->
-  list_to_atom(Name ++ "_worker_sup").
