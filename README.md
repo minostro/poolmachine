@@ -1,8 +1,6 @@
 Pool Machine
 =====
 
-[<img src="http://quickcheck-ci.com/p/minostro/poolmachine.png" alt="Build Status" width="160px">](http://quickcheck-ci.com/p/minostro/poolmachine)
-
 Yet Another Pool Application for Erlang projects.
 
 How to use it
