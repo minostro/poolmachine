@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/0, run/3]).
+-export([start_link/0, start/0, run/3, stop/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -23,10 +23,16 @@
 start_link() ->
   gen_server:start_link(?MODULE, [], []).
 
+start() ->
+  gen_server:start(?MODULE, [], []).
+
 run(Pid, sync, Task) ->
   gen_server:call(Pid, {run, Task});
 run(Pid, async, Task) ->
   gen_server:cast(Pid, {run, Task}).
+
+stop(Pid, Reason) ->
+  gen_server:cast(Pid, {stop, Reason}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -49,7 +55,9 @@ handle_cast({run, Task}, State) ->
       NewTask = poolmachine_task:set(Task, client_error, Error),
       run(on_error, NewTask),
       {stop, Error, State}
-  end.
+  end;
+handle_cast({stop, Reason}, State) ->
+  {stop, Reason, State}.
 
 handle_info(_Info, State) ->
   {noreply, State}.

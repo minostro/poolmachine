@@ -1,4 +1,4 @@
--module(task_properties).
+-module(task_proper).
 -include_lib("proper/include/proper.hrl").
 
 pid() ->
