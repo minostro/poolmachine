@@ -50,8 +50,8 @@ init([PoolSupPid, PoolName, Properties]) ->
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
-handle_cast({call, Task}, #{pool_worker_sup_pid := SupPid, keep_workers_alive := KeepWorkerAlive, workers := Workers} = State) ->
-  {ok, {Ref, NewTask}} = run_worker(SupPid, Task, KeepWorkerAlive),
+handle_cast({call, Task}, #{pool_worker_sup_pid := SupPid, workers := Workers} = State) ->
+  {ok, {Ref, NewTask}} = run_worker(SupPid, Task),
   {noreply, State#{workers => Workers#{Ref => NewTask}}}.
 
 handle_info({start_pool_worker_sup}, #{pool_sup_pid := PoolSupPid} =  State) ->
@@ -82,21 +82,21 @@ start_pool_worker_sup(SupPid) ->
   link(Pid),
   {ok, Pid}.
 
-run_worker(SupPid, Task, KeepWorkerAlive) ->
+run_worker(SupPid, Task) ->
   {ok, Pid} = poolmachine_pool_worker_sup:start_child(SupPid),
   Ref = monitor(process, Pid),
   NewTask = poolmachine_task:increase_attempt(Task),
-  poolmachine_pool_worker:run(Pid, NewTask, KeepWorkerAlive),
+  poolmachine_pool_worker:run(Pid, async, NewTask),
   {ok, {Ref, NewTask}}.
 
 handle_worker_down(_, normal, State) ->
   {noreply, State};
-handle_worker_down(MonitorRef, DownError, #{pool_worker_sup_pid := SupPid, keep_workers_alive := KeepWorkerAlive, workers := Workers} = State) ->
+handle_worker_down(MonitorRef, DownError, #{pool_worker_sup_pid := SupPid, workers := Workers} = State) ->
   #{MonitorRef := Task} = Workers,
   NewWorkers = maps:remove(MonitorRef, Workers),
   case poolmachine_task:can_be_retried(Task) of
     true ->
-      {ok, {Ref, NewTask}} = run_worker(SupPid, Task, KeepWorkerAlive),
+      {ok, {Ref, NewTask}} = run_worker(SupPid, Task),
       erlang:display(DownError),
       erlang:display(NewTask),
       {noreply, State#{workers => maps:put(Ref, NewTask, NewWorkers)}};

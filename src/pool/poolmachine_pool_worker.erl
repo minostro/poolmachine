@@ -23,7 +23,9 @@
 start_link() ->
   gen_server:start_link(?MODULE, [], []).
 
-run(Pid, Task, _KeepWorkerAlive) ->
+run(Pid, sync, Task) ->
+  gen_server:call(Pid, {run, Task});
+run(Pid, async, Task) ->
   gen_server:cast(Pid, {run, Task}).
 
 %% ------------------------------------------------------------------
@@ -31,6 +33,11 @@ run(Pid, Task, _KeepWorkerAlive) ->
 %% ------------------------------------------------------------------
 init([]) ->
   {ok, undefined}.
+
+handle_call({run, Task}, _From, State) ->
+  NewTask = run(call, Task),
+  Result = poolmachine_task:get(NewTask, client_result),
+  {reply, {ok, Result}, State}.
 
 handle_cast({run, Task}, State) ->
   try run(call, Task) of
@@ -43,9 +50,6 @@ handle_cast({run, Task}, State) ->
       run(on_error, NewTask),
       {stop, Error, State}
   end.
-
-handle_call(_Request, _From, State) ->
-  {reply, ok, State}.
 
 handle_info(_Info, State) ->
   {noreply, State}.

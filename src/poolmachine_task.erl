@@ -1,6 +1,6 @@
 -module(poolmachine_task).
 
--export([new/3, mfa/2, set/3, increase_attempt/1, can_be_retried/1]).
+-export([new/3, mfa/2, get/2, set/3, increase_attempt/1, can_be_retried/1]).
 
 -type poolmachine_task() :: #{
   'module' => atom(),
@@ -38,9 +38,11 @@ set(Task, client_result, Data) ->
 set(Task, client_error, Data) ->
   maps:update(client_error, Data, Task).
 
+get(#{client_result := Result}, client_result) ->
+  Result.
 
 increase_attempt(#{attempts := Attempts} = Task) ->
   Task#{attempts => Attempts + 1}.
 
-can_be_retried(#{attempts := Attempts, max_retries := MaxRetries} = Task) ->
+can_be_retried(#{attempts := Attempts, max_retries := MaxRetries}) ->
   Attempts < MaxRetries.
