@@ -1,16 +1,15 @@
 -module(my_bad_task).
 -behaviour(poolmachine_task_behaviour).
 
--export([initialize/0, call/2, on_success/2, on_error/2]).
+-export([call/1, on_success/2, on_error/3]).
 
-initialize() ->
-  {ok, my_test}.
-
-call([], _State) ->
+call([]) ->
   {ok, 1/0}.
 
 on_success(Result, RespondTo) ->
   RespondTo ! {success, Result}.
 
-on_error(Error, RespondTo) ->
-  RespondTo ! {error, Error}.
+on_error(Error, 0, RespondTo) ->
+  RespondTo ! {error, Error};
+on_error(_Error, _RetriesRemaining, _RespondTo) ->
+  ok.

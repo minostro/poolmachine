@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/0, initialize/3, run/1]).
+-export([start_link/0, run/3]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -23,11 +23,8 @@
 start_link() ->
   gen_server:start_link(?MODULE, [], []).
 
-initialize(Pid, Task, KeepWorkerAlive) ->
-  gen_server:cast(Pid, {initialize, Task, KeepWorkerAlive}).
-
-run(Pid) ->
-  gen_server:cast(Pid, call).
+run(Pid, Task, _KeepWorkerAlive) ->
+  gen_server:cast(Pid, {run, Task}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -35,12 +32,17 @@ run(Pid) ->
 init([]) ->
   {ok, undefined}.
 
-handle_cast({initialize, Task, KeepAlive}, State) ->
-  initialize_worker(Task, KeepAlive, State);
-handle_cast(call, #{task := Task} = State) ->
-  NewTask = run(call, Task),
-  run(on_success, NewTask),
-  handle_worker_done(State).
+handle_cast({run, Task}, State) ->
+  try run(call, Task) of
+    NewTask -> run(on_success, NewTask),
+    {stop, normal, State}
+  catch
+    Exception:Reason ->
+      Error = {Exception, Reason, erlang:get_stacktrace()},
+      NewTask = poolmachine_task:set(Task, client_error, Error),
+      run(on_error, NewTask),
+      {stop, Error, State}
+  end.
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
@@ -57,25 +59,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-initialize_worker(Task, KeepAlive, undefined) ->
-  NewTask = run(initialize, Task),
-  {noreply, #{task => NewTask, keep_alive => KeepAlive}};
-initialize_worker(_Task, _KeepAlive, State) ->
-  {noreply, State}.
-
-run(initialize, Task) ->
-  {M, F, A} = poolmachine_task:mfa(Task, initialize),
-  {ok, Result} = apply(M, F, A),
-  poolmachine_task:set(Task, client_data, Result);
 run(call, Task) ->
   {M, F, A} = poolmachine_task:mfa(Task, call),
   {ok, Result} = apply(M, F, A),
   poolmachine_task:set(Task, client_result, Result);
 run(on_success, Task) ->
   {M, F, A} = poolmachine_task:mfa(Task, on_success),
+  apply(M, F, A);
+run(on_error, Task) ->
+  {M, F, A} = poolmachine_task:mfa(Task, on_error),
   apply(M, F, A).
-
-handle_worker_done(#{keep_alive := true} = State) ->
-  {noreply, State};
-handle_worker_done(#{keep_alive := false} = State) ->
-  {stop, normal, State}.

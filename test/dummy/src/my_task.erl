@@ -1,14 +1,10 @@
 -module(my_task).
 -behaviour(poolmachine_task_behaviour).
 
--export([initialize/0, call/2, on_success/2, on_error/2]).
+-export([call/1, on_success/2, on_error/3]).
 
-initialize() ->
-  {ok, my_test}.
-
-call(Arguments, State) ->
+call(Arguments) ->
   erlang:display(Arguments),
-  erlang:display(State),
   {ok, 1}.
 
 on_success(Result, RespondTo) ->
@@ -16,5 +12,5 @@ on_success(Result, RespondTo) ->
   erlang:display(RespondTo),
   RespondTo ! {success, Result}.
 
-on_error(Error, RespondTo) ->
+on_error(Error, _RetriesRemaining, RespondTo) ->
   RespondTo ! {error, Error}.

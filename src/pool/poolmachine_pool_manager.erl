@@ -86,8 +86,7 @@ run_worker(SupPid, Task, KeepWorkerAlive) ->
   {ok, Pid} = poolmachine_pool_worker_sup:start_child(SupPid),
   Ref = monitor(process, Pid),
   NewTask = poolmachine_task:increase_attempt(Task),
-  poolmachine_pool_worker:initialize(Pid, NewTask, KeepWorkerAlive),
-  poolmachine_pool_worker:run(Pid),
+  poolmachine_pool_worker:run(Pid, NewTask, KeepWorkerAlive),
   {ok, {Ref, NewTask}}.
 
 handle_worker_down(_, normal, State) ->
