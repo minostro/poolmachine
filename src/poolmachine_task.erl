@@ -8,8 +8,8 @@
   'respond_to' => pid(),
   'max_retries' => integer(),
   'attempts' => integer(),
-  'client_data' => any(),
-  'client_result' => any()
+  'client_result' => any(),
+  'client_error' => any()
 }.
 -export_type([poolmachine_task/0]).
 
@@ -21,21 +21,23 @@ new(Module, CallArgs, RespondTo) ->
     respond_to => RespondTo,
     max_retries => 6,
     attempts => 0,
-    client_data => undefined,
-    client_result => undefined
+    client_result => undefined,
+    client_error => undefined
   }.
 
-mfa(#{module := Module}, initialize) ->
-  {Module, initialize, []};
-mfa(#{module := Module, call_args := Args, client_data := ClientData}, call) ->
-  {Module, call, [Args, ClientData]};
+mfa(#{module := Module, call_args := Args}, call) ->
+  {Module, call, [Args]};
 mfa(#{module := Module, client_result := Args, respond_to := RespondTo}, on_success) ->
-  {Module, on_success, [Args, RespondTo]}.
+  {Module, on_success, [Args, RespondTo]};
+mfa(#{module := Module, client_error := Args, respond_to := RespondTo, attempts := Attempts, max_retries := MaxRetries}, on_error) ->
+  RetriesRemaining = MaxRetries - Attempts,
+  {Module, on_error, [Args, RetriesRemaining, RespondTo]}.
 
-set(Task, client_data, Data) ->
-  maps:update(client_data, Data, Task);
 set(Task, client_result, Data) ->
-  maps:update(client_result, Data, Task).
+  maps:update(client_result, Data, Task);
+set(Task, client_error, Data) ->
+  maps:update(client_error, Data, Task).
+
 
 increase_attempt(#{attempts := Attempts} = Task) ->
   Task#{attempts => Attempts + 1}.
