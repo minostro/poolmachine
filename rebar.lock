@@ -1,4 +1,4 @@
-[{<<"eqc">>,
-  {git,"git://github.com/rpt/eqcmini.git",
-       {ref,"c33bc5ac3600026877b04b9dedae35f1f35f49a7"}},
+[{<<"poolmachine">>,
+  {git,"https://github.com/minostro/poolmachine.git",
+       {ref,"d5679dc9c968749ccf082d227a6ed3700e4923c5"}},
   0}].
