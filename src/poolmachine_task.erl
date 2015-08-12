@@ -39,7 +39,9 @@ set(Task, client_error, Data) ->
   maps:update(client_error, Data, Task).
 
 get(#{client_result := Result}, client_result) ->
-  Result.
+  Result;
+get(#{client_error := Error}, client_error) ->
+  Error.
 
 increase_attempt(#{attempts := Attempts} = Task) ->
   Task#{attempts => Attempts + 1}.
