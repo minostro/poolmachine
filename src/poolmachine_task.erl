@@ -3,7 +3,7 @@
 -export([new/1, mfa/2, can_be_retried/1]).
 
 %%% Getters API definition
--export([attempts/1, client_result/1, client_error/1, ref/1, respond_to/1, running_mode/1]).
+-export([attempts/1, client_result/1, client_error/1, ref/1, respond_to/1, running_mode/1, module/1]).
 
 %%% Setters API definition
 -export([client_result/2, client_error/2, increase_attempt/1, running_mode/2]).
@@ -47,6 +47,8 @@ respond_to(#{respond_to := RespondTo}) ->
   RespondTo.
 running_mode(#{running_mode := RunningMode}) ->
   RunningMode.
+module(#{module := Module}) ->
+  Module.
 
 %%% Setters implementation
 client_result(Task, Value) ->

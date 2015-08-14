@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/0, start_pool/2, register_pool/2, schedule/2, run/2, change_pool_size/2]).
+-export([start_link/0, start_pool/2, schedule/2, run/2, change_pool_size/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -25,9 +25,6 @@ start_link() ->
 
 start_pool(Name, Properties) ->
   gen_server:call(?SERVER, {start_pool, Name, Properties}).
-
-register_pool(Name, Pid) ->
-  gen_server:cast(?SERVER, {pool_registered, Name, Pid}).
 
 schedule(PoolName, AsyncTask) ->
   gen_server:cast(?SERVER, {run, PoolName, AsyncTask}).
@@ -53,20 +50,20 @@ init([]) ->
   {ok, #{pools => #{}}}.
 
 handle_call({start_pool, PoolName, Properties}, _From, State) ->
-  poolmachine_pool_sup:start_child(PoolName, Properties),
+  poolmachine_pool_sup:start_child(self(), PoolName, Properties),
   {reply, ok, State}.
 
 handle_cast({run, PoolName, Task}, State) ->
   Pid = pool_manager_pid(PoolName, State),
   poolmachine_pool_manager:run(Pid, Task),
   {noreply, State};
-handle_cast({pool_registered, PoolName, Pid}, #{pools := Pools} = State) ->
-  {noreply, State#{pools => Pools#{PoolName => Pid}}};
 handle_cast({pool_size, PoolName, Size}, State) ->
   Pid = pool_manager_pid(PoolName, State),
   poolmachine_pool_manager:change_pool_size(Pid, Size),
   {noreply, State}.
 
+handle_info({register_pool, PoolName, Pid}, #{pools := Pools} = State) ->
+  {noreply, State#{pools => Pools#{PoolName => Pid}}};
 handle_info(_Info, State) ->
   {noreply, State}.
 

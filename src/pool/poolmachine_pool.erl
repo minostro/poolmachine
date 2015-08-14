@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/2, start_worker_sup/1]).
+-export([start_link/3, start_worker_sup/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -14,8 +14,8 @@
 %% API functions
 %%====================================================================
 
-start_link(Name, Properties) ->
-  supervisor:start_link(?MODULE, [Name, Properties]).
+start_link(ControllerPid, Name, Properties) ->
+  supervisor:start_link(?MODULE, [ControllerPid, Name, Properties]).
 
 start_worker_sup(Pid) ->
   WorkerSupSpec = {
@@ -34,11 +34,11 @@ start_worker_sup(Pid) ->
 %%====================================================================
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
-init([Name, Properties]) ->
+init([ControllerPid, Name, Properties]) ->
   SupFlags = {one_for_all,1, 5},
   PoolManagerSpec = {
     poolmachine_pool_manager,
-    {poolmachine_pool_manager, start_link, [self(), Name, Properties]},
+    {poolmachine_pool_manager, start_link, [self(), ControllerPid, Name, Properties]},
     permanent,
     brutal_kill,
     worker,

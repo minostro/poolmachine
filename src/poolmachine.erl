@@ -1,10 +1,13 @@
 -module(poolmachine).
 
--export([start/0, start_pool/2, new_task/1, schedule/2, run/2, change_pool_size/2]).
+-export([start/0, stop/0, start_pool/2, new_task/1, schedule/2, run/2, change_pool_size/2]).
 
 -spec start() -> {ok, pid()} | {error, any()}.
 start() ->
   application:start(poolmachine).
+
+stop() ->
+  application:stop(poolmachine).
 
 -spec start_pool(atom(), map()) -> {ok, pid()} | {error, any()}.
 start_pool(Name, Properties) ->

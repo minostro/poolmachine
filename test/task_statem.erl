@@ -64,7 +64,7 @@ postcondition(Task, {call, poolmachine_task, increase_attempt, [_Task]}, NewTask
 
 prop_task() ->
   ?FORALL(Cmds, commands(?MODULE),
-    %?TRAPEXIT(
+    ?TRAPEXIT(
       begin
         {H,S,Res} = run_commands(?MODULE, Cmds),
         ?WHENFAIL(
@@ -72,5 +72,5 @@ prop_task() ->
             [H, S, Res]),
           aggregate(command_names(Cmds), Res =:= ok))
       end
-    %)
+    )
   ).
