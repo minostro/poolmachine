@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/0, start_pool/2, register_pool/2, schedule/2]).
+-export([start_link/0, start_pool/2, register_pool/2, schedule/2, run/2, change_pool_size/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -29,8 +29,22 @@ start_pool(Name, Properties) ->
 register_pool(Name, Pid) ->
   gen_server:cast(?SERVER, {pool_registered, Name, Pid}).
 
-schedule(PoolName, Task) ->
-  gen_server:call(?SERVER, {schedule, PoolName, Task}).
+schedule(PoolName, AsyncTask) ->
+  gen_server:cast(?SERVER, {run, PoolName, AsyncTask}).
+
+run(PoolName, Task) ->
+  Ref = poolmachine_task:ref(Task),
+  SyncTask = poolmachine_task:running_mode(Task, sync),
+  gen_server:cast(?SERVER, {run, PoolName, SyncTask}),
+  receive
+    {Ref, Message} ->
+      Message
+  after 5000 ->
+    timeout
+  end.
+
+change_pool_size(PoolName, Size) ->
+  gen_server:cast(?SERVER, {pool_size, PoolName, Size}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -40,14 +54,18 @@ init([]) ->
 
 handle_call({start_pool, PoolName, Properties}, _From, State) ->
   poolmachine_pool_sup:start_child(PoolName, Properties),
-  {reply, ok, State};
-handle_call({schedule, PoolName, Task}, _From, #{pools := Pools} = State) ->
-  #{PoolName := Pid} = Pools,
-  poolmachine_pool_manager:schedule(Pid, Task),
   {reply, ok, State}.
 
+handle_cast({run, PoolName, Task}, State) ->
+  Pid = pool_manager_pid(PoolName, State),
+  poolmachine_pool_manager:run(Pid, Task),
+  {noreply, State};
 handle_cast({pool_registered, PoolName, Pid}, #{pools := Pools} = State) ->
-  {noreply, State#{pools => Pools#{PoolName => Pid}}}.
+  {noreply, State#{pools => Pools#{PoolName => Pid}}};
+handle_cast({pool_size, PoolName, Size}, State) ->
+  Pid = pool_manager_pid(PoolName, State),
+  poolmachine_pool_manager:change_pool_size(Pid, Size),
+  {noreply, State}.
 
 handle_info(_Info, State) ->
   {noreply, State}.
@@ -61,3 +79,5 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+pool_manager_pid(PoolName, #{pools := Pools}) ->
+  maps:get(PoolName, Pools).

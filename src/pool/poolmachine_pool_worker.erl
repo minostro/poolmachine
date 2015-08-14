@@ -10,7 +10,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/0, start/0, run/3, stop/2]).
+-export([start_link/0, start/0, run/2, stop/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -26,9 +26,7 @@ start_link() ->
 start() ->
   gen_server:start(?MODULE, [], []).
 
-run(Pid, sync, Task) ->
-  gen_server:call(Pid, {run, Task});
-run(Pid, async, Task) ->
+run(Pid, Task) ->
   gen_server:cast(Pid, {run, Task}).
 
 stop(Pid, Reason) ->
@@ -40,24 +38,22 @@ stop(Pid, Reason) ->
 init([]) ->
   {ok, undefined}.
 
-handle_call({run, Task}, _From, State) ->
-  NewTask = run(call, Task),
-  Result = poolmachine_task:get(NewTask, client_result),
-  {reply, {ok, Result}, State}.
-
 handle_cast({run, Task}, State) ->
-  try run(call, Task) of
-    NewTask -> run(on_success, NewTask),
+  try perform(call, Task) of
+    NewTask -> perform(on_success, NewTask),
     {stop, normal, State}
   catch
     Exception:Reason ->
       Error = {Exception, Reason, erlang:get_stacktrace()},
-      NewTask = poolmachine_task:set(Task, client_error, Error),
-      run(on_error, NewTask),
+      NewTask = poolmachine_task:client_error(Task, Error),
+      perform(on_error, NewTask),
       {stop, Error, State}
   end;
 handle_cast({stop, Reason}, State) ->
   {stop, Reason, State}.
+
+handle_call(_Msg, _From, State) ->
+  {reply, ok, State}.
 
 handle_info(_Info, State) ->
   {noreply, State}.
@@ -71,13 +67,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-run(call, Task) ->
+perform(call, Task) ->
   {M, F, A} = poolmachine_task:mfa(Task, call),
   {ok, Result} = apply(M, F, A),
-  poolmachine_task:set(Task, client_result, Result);
-run(on_success, Task) ->
+  poolmachine_task:client_result(Task, Result);
+perform(on_success, Task) ->
   {M, F, A} = poolmachine_task:mfa(Task, on_success),
   apply(M, F, A);
-run(on_error, Task) ->
+perform(on_error, Task) ->
   {M, F, A} = poolmachine_task:mfa(Task, on_error),
   apply(M, F, A).

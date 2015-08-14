@@ -4,17 +4,18 @@
 
 -type state() :: #{
   pool_sup_pid => pid(),
-  keep_workers_alive => boolean(),
   max_pool_size => infinity | non_neg_integer(),
   pool_worker_sup_pid => undefined | pid(),
-  workers => map()
+  active_workers => map(),
+  active_workers_count => 0,
+  queue => list()
 }.
 
 
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/3, schedule/2]).
+-export([start_link/3, run/2, change_pool_size/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -24,43 +25,52 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-start_link(PoolSupPid, Name, Properties) ->
-  gen_server:start_link(?MODULE, [PoolSupPid, Name, Properties], []).
+start_link(PoolSupPid, Name, PropertyMap) ->
+  gen_server:start_link(?MODULE, [PoolSupPid, Name, PropertyMap], []).
 
-schedule(Pid, Task) ->
-  gen_server:cast(Pid, {call, Task}).
+run(Pid, Task) ->
+  gen_server:cast(Pid, {run, Task}).
+
+change_pool_size(Pid, Size) ->
+  gen_server:cast(Pid, {pool_size, Size}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
-init([PoolSupPid, PoolName, Properties]) ->
-  KeepWorkersAlive = proplists:get_value(keep_workers_alive, Properties, false),
-  MaxPoolSize = proplists:get_value(max_pool_size, Properties, infinity),
+init([PoolSupPid, PoolName, PropertyMap]) ->
   self() ! {start_pool_worker_sup},
   self() ! {register_pool, PoolName},
   State = #{
     pool_sup_pid => PoolSupPid,
-    keep_workers_alive => KeepWorkersAlive,
-    max_pool_size => MaxPoolSize,
+    max_pool_size => infinity,
     pool_worker_sup_pid => undefined,
-    workers => #{}
+    active_workers => #{},
+    active_workers_count => 0,
+    queue => []
   },
-  {ok, State}.
+  {ok, maps:merge(State, PropertyMap)}.
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
-handle_cast({call, Task}, #{pool_worker_sup_pid := SupPid, workers := Workers} = State) ->
-  {ok, {Ref, NewTask}} = run_worker(SupPid, Task),
-  {noreply, State#{workers => Workers#{Ref => NewTask}}}.
+handle_cast({run, Task}, State) ->
+  RunningMode = poolmachine_task:running_mode(Task),
+  handle_run_task(RunningMode, Task, State);
+handle_cast({pool_size, Size}, #{max_pool_size := CurrentSize} = State) ->
+  NewState = State#{max_pool_size => Size},
+  case Size > CurrentSize of
+    true ->
+      {noreply, run_queued_tasks(NewState)};
+    false ->
+      {noreply, NewState}
+  end.
 
-handle_info({start_pool_worker_sup}, #{pool_sup_pid := PoolSupPid} =  State) ->
-  {ok, Pid} = start_pool_worker_sup(PoolSupPid),
-  {noreply, State#{pool_worker_sup_pid => Pid}};
+handle_info({start_pool_worker_sup}, State) ->
+  handle_start_pool_worker_sup(State);
 handle_info({register_pool, PoolName}, State) ->
   poolmachine_controller:register_pool(PoolName, self()),
   {noreply, State};
-handle_info({'DOWN', MonitorRef, process, _WorkerPid, DownReason}, #{workers := Workers} = State) ->
+handle_info({'DOWN', MonitorRef, process, _WorkerPid, DownReason}, #{active_workers := Workers} = State) ->
   case maps:is_key(MonitorRef, Workers) of
     true ->
       handle_worker_down(MonitorRef, DownReason, State);
@@ -76,31 +86,72 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
-%% ------------------------------------------------------------------
-start_pool_worker_sup(SupPid) ->
-  {ok, Pid} = poolmachine_pool:start_worker_sup(SupPid),
-  link(Pid),
-  {ok, Pid}.
+%% ------------------------------------------------------------------ 
+handle_run_task(async, Task, State) ->
+  NewState = case workers_available(State) of
+    true ->
+      run_task(Task, State);
+    false ->
+      enqueue_task(Task, State)
+  end,
+  {noreply, NewState};
+handle_run_task(sync, Task, State) ->
+  NewState = case workers_available(State) of
+    true ->
+      run_task(Task, State);
+    false ->
+      notify_error(Task, out_of_capacity),
+      State
+  end,
+  {noreply, NewState}.
 
-run_worker(SupPid, Task) ->
+handle_worker_down(MonitorRef, normal, State) ->
+  NewState = remove_worker(MonitorRef, State),
+  {noreply, run_queued_tasks(NewState)};
+handle_worker_down(MonitorRef, _DownError, #{active_workers := Workers} = State) ->
+  #{MonitorRef := Task} = Workers,
+  NewState = remove_worker(MonitorRef, State),
+  case poolmachine_task:can_be_retried(Task) of
+    true ->
+      RunningMode = poolmachine_task:running_mode(Task),
+      handle_run_task(RunningMode, Task, NewState);
+    false ->
+      {noreply, NewState}
+  end.
+
+handle_start_pool_worker_sup(#{pool_sup_pid := PoolSupPid} = State) ->
+  {ok, Pid} = poolmachine_pool:start_worker_sup(PoolSupPid),
+  link(Pid),
+  {noreply, State#{pool_worker_sup_pid => Pid}}.
+
+run_task(Task, #{pool_worker_sup_pid := SupPid, active_workers := Workers, active_workers_count := Count} = State) ->
   {ok, Pid} = poolmachine_pool_worker_sup:start_child(SupPid),
   Ref = monitor(process, Pid),
   NewTask = poolmachine_task:increase_attempt(Task),
-  poolmachine_pool_worker:run(Pid, async, NewTask),
-  {ok, {Ref, NewTask}}.
+  poolmachine_pool_worker:run(Pid, NewTask),
+  State#{active_workers => Workers#{Ref => NewTask}, active_workers_count => Count + 1}.
 
-handle_worker_down(_, normal, State) ->
-  {noreply, State};
-handle_worker_down(MonitorRef, DownError, #{pool_worker_sup_pid := SupPid, workers := Workers} = State) ->
-  #{MonitorRef := Task} = Workers,
-  NewWorkers = maps:remove(MonitorRef, Workers),
-  case poolmachine_task:can_be_retried(Task) of
+run_queued_tasks(#{queue := []} = State) ->
+  State;
+run_queued_tasks(#{queue := [Task, Rest]} = State) ->
+  case workers_available(State) of
     true ->
-      {ok, {Ref, NewTask}} = run_worker(SupPid, Task),
-      erlang:display(DownError),
-      erlang:display(NewTask),
-      {noreply, State#{workers => maps:put(Ref, NewTask, NewWorkers)}};
+      NewState = run_task(Task, State),
+      run_queued_tasks(NewState#{queue => Rest});
     false ->
-      erlang:display(":-("),
-      {noreply, State#{workers => NewWorkers}}
+      State
   end.
+
+workers_available(#{max_pool_size := MaxSize, active_workers_count := Count}) ->
+  MaxSize > Count.
+
+enqueue_task(Task, #{queue := Queue} = State) ->
+  State#{queue => [Task, Queue]}.
+
+remove_worker(MonitorRef, #{active_workers := Workers, active_workers_count := Count} = State) ->
+  State#{active_workers => maps:remove(MonitorRef, Workers), active_workers_count := Count -1}.
+
+notify_error(Task, out_of_capacity) ->
+  RespondTo = poolmachine_task:respond_to(Task),
+  TaskRef = poolmachine_task:ref(Task),
+  RespondTo ! {TaskRef, {pool_manager_error, "There are not workers available at this moment."}}.

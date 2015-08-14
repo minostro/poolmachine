@@ -10,34 +10,35 @@ pid() ->
 
 task() ->
   ?LET({Module, Args, RespondTo}, {atom(), list(any()), pid()},
-     {Module, Args, RespondTo, poolmachine_task:new(Module, Args, RespondTo)}).
+     {Module, Args, RespondTo, poolmachine_task:new(#{module => Module, args => Args, respond_to => RespondTo})}).
 
 prop_call_mfa() ->
-  ?FORALL({Module, Args, RespondTo, Task}, task(),
+  ?FORALL({Module, Args, _RespondTo, Task}, task(),
     begin
-      Task = poolmachine_task:new(Module, Args, RespondTo),
       poolmachine_task:mfa(Task, call) =:= {Module, call, [Args]}
     end).
 
 prop_on_success_mfa() ->
   ?FORALL({{Module, _Args, RespondTo, Task}, ClientResult}, {task(), any()},
     begin
-      NewTask = poolmachine_task:set(Task, client_result, ClientResult),
-      poolmachine_task:mfa(NewTask, on_success) =:= {Module, on_success, [ClientResult, RespondTo]}
+      NewTask = poolmachine_task:client_result(Task, ClientResult),
+      TaskRef = poolmachine_task:ref(Task),
+      poolmachine_task:mfa(NewTask, on_success) =:= {Module, on_success, [ClientResult, TaskRef, RespondTo]}
     end).
 
 prop_on_error_mfa() ->
   ?FORALL({{Module, _Args, RespondTo, Task}, Error}, {task(), any()},
     begin
-      NewTask = poolmachine_task:set(Task, client_error, Error),
-      poolmachine_task:mfa(NewTask, on_error) =:= {Module, on_error, [Error, 6, RespondTo]}
+      NewTask = poolmachine_task:client_error(Task, Error),
+      TaskRef = poolmachine_task:ref(Task),
+      poolmachine_task:mfa(NewTask, on_error) =:= {Module, on_error, [Error, TaskRef, RespondTo, #{retries_remaining => 6}]}
     end).
 
 prop_get_client_result() ->
   ?FORALL({{_Module, _Args, _RespondTo, Task}, ClientResult}, {task(), any()},
     begin
-      NewTask = poolmachine_task:set(Task, client_result, ClientResult),
-      ClientResult =:= poolmachine_task:get(NewTask, client_result)
+      NewTask = poolmachine_task:client_result(Task, ClientResult),
+      ClientResult =:= poolmachine_task:client_result(NewTask)
     end).
 
 prop_can_be_retried() ->
