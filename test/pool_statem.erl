@@ -7,7 +7,7 @@
 -define(POOL_MANAGER_NAME, test_pool_manager).
 -define(PROXY_NAME, test_proxy).
 
--define(CAPACITIES, [0, 1, 2]).
+-define(CAPACITIES, [0, 2]).
 -define(TASK_MODULES, [good_task, bad_task]).
 -define(INITIAL_CAPACITY, infinity).
 
@@ -52,14 +52,15 @@ next_state(State, _Var, {call, poolmachine_pool_manager, change_pool_size, [_Poo
   State#{capacity => Capacity}.
 
 postcondition(State, {call, poolmachine_pool_manager, run, [_PoolName, Task]}, Result) -> 
-  Result =:= ok,
+  equals(Result, ok),
   RunningMode = poolmachine_task:running_mode(Task),
   handle_postcondition_run(State, RunningMode, Task);
-postcondition(#{capacity := Capacity, enqueued_tasks := Tasks, proxy_pid := Pid}, {call, poolmachine_pool_manager, change_pool_size, [_PoolName, _Capacity]}, Result) ->
-  Result =:= ok,
-  case Capacity of
-    0 -> ensure_enqueued_tasks_were_ran(Pid, Tasks);
-    _ -> true
+postcondition(#{capacity := Capacity, enqueued_tasks := Tasks, proxy_pid := Pid}, {call, poolmachine_pool_manager, change_pool_size, [_PoolName, NewCapacity]}, Result) ->
+  equals(Result, ok),
+  case [Capacity, NewCapacity] of
+    [_, 0] -> true;
+    [0, _] -> ensure_enqueued_tasks_were_ran(Pid, Tasks);
+    [_, _] -> true
   end.
 
 handle_postcondition_run(#{capacity := 0, proxy_pid := Pid}, sync, Task) ->
@@ -84,8 +85,8 @@ handle_postcondition_run(#{proxy_pid := Pid}, _Mode, Task) ->
 ensure_enqueued_tasks_were_ran(_ProxyPid, []) ->
   true;
 ensure_enqueued_tasks_were_ran(ProxyPid, [Task | Rest]) ->
-  TestResult = proxy(ProxyPid, result, Task),
-  TestResult =:= {success, [[1], "test"]},
+  RunningMode = poolmachine_task:running_mode(Task),
+  handle_postcondition_run(#{proxy_pid => ProxyPid}, RunningMode, Task),
   ensure_enqueued_tasks_were_ran(ProxyPid, Rest).
 
 prop_task() ->
@@ -149,7 +150,7 @@ loop(State) ->
     {TaskRef, Result} ->
       loop(State#{TaskRef => Result});
     {result, From, TaskRef} ->
-      Result = maps:get(TaskRef, State, undefined),
+      Result = maps:get(TaskRef, State, no_result),
       From ! Result,
       loop(State);
     stop ->
