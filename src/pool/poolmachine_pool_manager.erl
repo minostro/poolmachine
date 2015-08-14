@@ -154,4 +154,4 @@ remove_worker(MonitorRef, #{active_workers := Workers, active_workers_count := C
 notify_error(Task, out_of_capacity) ->
   RespondTo = poolmachine_task:respond_to(Task),
   TaskRef = poolmachine_task:ref(Task),
-  RespondTo ! {TaskRef, {pool_manager_error, "There are not workers available at this moment."}}.
+  RespondTo ! {TaskRef, {error, "There are no workers available at the moment."}}.
