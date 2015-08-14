@@ -15,7 +15,7 @@
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
--export([start_link/3, run/2, change_pool_size/2]).
+-export([start_link/4, run/2, change_pool_size/2]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -25,8 +25,8 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-start_link(PoolSupPid, Name, PropertyMap) ->
-  gen_server:start_link(?MODULE, [PoolSupPid, Name, PropertyMap], []).
+start_link(PoolSupPid, ControllerPid, Name, PropertyMap) ->
+  gen_server:start_link(?MODULE, [PoolSupPid, ControllerPid, Name, PropertyMap], []).
 
 run(Pid, Task) ->
   gen_server:cast(Pid, {run, Task}).
@@ -37,9 +37,9 @@ change_pool_size(Pid, Size) ->
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
-init([PoolSupPid, PoolName, PropertyMap]) ->
+init([PoolSupPid, ControllerPid, PoolName, PropertyMap]) ->
   self() ! {start_pool_worker_sup},
-  self() ! {register_pool, PoolName},
+  self() ! {register_pool, ControllerPid, PoolName},
   State = #{
     pool_sup_pid => PoolSupPid,
     max_pool_size => infinity,
@@ -67,8 +67,8 @@ handle_cast({pool_size, Size}, #{max_pool_size := CurrentSize} = State) ->
 
 handle_info({start_pool_worker_sup}, State) ->
   handle_start_pool_worker_sup(State);
-handle_info({register_pool, PoolName}, State) ->
-  poolmachine_controller:register_pool(PoolName, self()),
+handle_info({register_pool, ControllerPid, PoolName}, State) ->
+  ControllerPid ! {register_pool, PoolName, self()},
   {noreply, State};
 handle_info({'DOWN', MonitorRef, process, _WorkerPid, DownReason}, #{active_workers := Workers} = State) ->
   case maps:is_key(MonitorRef, Workers) of
