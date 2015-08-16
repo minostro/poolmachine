@@ -7,8 +7,8 @@
 -define(POOL_MANAGER_NAME, test_pool_manager).
 -define(PROXY_NAME, test_proxy).
 
--define(CAPACITIES, [0, 2]).
--define(TASK_MODULES, [good_task, bad_task]).
+-define(CAPACITIES, [0, 1, 2]).
+-define(TASK_MODULES, [good_task]).
 -define(INITIAL_CAPACITY, infinity).
 
 %%% generators
@@ -36,7 +36,7 @@ initial_state() ->
 
 command(#{manager_pid := Pid} = State) ->
   frequency([
-    {4, {call, poolmachine_pool_manager, run, [Pid, task(State)]}},
+    {5, {call, poolmachine_pool_manager, run, [Pid, task(State)]}},
     {1, {call, poolmachine_pool_manager, change_pool_size, [Pid, capacity()]}}
   ]).
 
@@ -68,18 +68,29 @@ handle_postcondition_run(#{capacity := 0, proxy_pid := Pid}, sync, Task) ->
   TestResult =:= {error, "There are no workers available at the moment."};
 handle_postcondition_run(#{proxy_pid := Pid}, sync, Task) ->
   TestResult = proxy(Pid, result, Task),
-  case TestResult of
-    {error, "There are no workers available at the moment."} -> true;
-    {success, [[1], "test"]} -> true;
-    {error, {error, badarith, _}} -> true
+  case poolmachine_task:module(Task) of
+    good_task -> (TestResult =:= {error, "There are no workers available at the moment."}) or (TestResult =:= {success, [[1], "test"]});
+    bad_task ->
+      case TestResult =:= {error, "There are no workers available at the moment."} of
+        true -> true;
+        false ->
+          {error, {ExceptionType, ExceptionReason, _StackTrace}} = TestResult,
+          [ExceptionType, ExceptionReason] =:= [error, badarith]
+      end
   end;
 handle_postcondition_run(#{capacity := 0}, async, _Task) ->
   true;
 handle_postcondition_run(#{proxy_pid := Pid}, _Mode, Task) ->
   TestResult = proxy(Pid, result, Task),
-  case {poolmachine_task:module(Task), TestResult} of
-    {good_task, {success, [[1], "test"]}} -> true;
-    {bad_task, {error, {error, badarith, _}}} -> true
+  case poolmachine_task:module(Task) of
+    good_task -> TestResult =:= {success, [[1], "test"]};
+    bad_task  ->
+      case TestResult =:= {error, "There are no workers available at the moment."} of
+        true -> true;
+        false ->
+          {error, {ExceptionType, ExceptionReason, _StackTrace}} = TestResult,
+          [ExceptionType, ExceptionReason] =:= [error, badarith]
+      end
   end.
 
 ensure_enqueued_tasks_were_ran(_ProxyPid, []) ->
