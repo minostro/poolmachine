@@ -6,7 +6,7 @@ start() ->
   Results = [
     proper:module(task_proper),
     proper:module(pool_worker_proper),
-    %proper:module(task_statem),
+    proper:module(task_statem),
     proper:module(pool_statem)
   ],
   case lists:flatten(Results) of

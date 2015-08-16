@@ -5,7 +5,7 @@
 
 %%% Abstract state machine for Task
 initial_state() ->
-  poolmachine_task:new(#{module => my_module, args => [], respond_to => self(), ref => self()}).
+  poolmachine_task:new(#{module => my_module, args => [], respond_to => list_to_pid("<0.0.1>"), ref => list_to_pid("<0.0.1>")}).
 
 command(Task) ->
   oneof([
