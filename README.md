@@ -1,4 +1,4 @@
-Pool Machine
+Pool Machine [![Build Status](https://secure.travis-ci.org/johannesh/ibrowse.png)](http://travis-ci.org/minostro/poolmachine)
 =====
 
 Yet Another Pool Application for Erlang projects.
