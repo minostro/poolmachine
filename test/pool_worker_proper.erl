@@ -18,7 +18,7 @@ prop_run_good_task() ->
 
       poolmachine_pool_worker:stop(Pid, normal),
       %%Please check tasks/good_task.erl, line 7
-      TestResult =:=  [Args] ++ ["test2"]
+      TestResult =:=  [Args] ++ ["test"]
     end).
 
 prop_run_bad_task() ->
