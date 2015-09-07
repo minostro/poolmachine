@@ -75,7 +75,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 perform(call, Task, State) ->
   {M, F, A} = poolmachine_task:mfa(Task, call),
-  {ok, Result} = apply(M, F, [A, State]),
+  {ok, Result} = apply(M, F, A ++ [State]),
   poolmachine_task:client_result(Task, Result);
 perform(on_success, Task, _State) ->
   {M, F, A} = poolmachine_task:mfa(Task, on_success),

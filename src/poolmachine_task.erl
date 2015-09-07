@@ -66,7 +66,7 @@ can_be_retried(#{running_mode := sync}) ->
   false.
 
 mfa(#{module := Module, args := Args}, call) ->
-  {Module, call, Args};
+  {Module, call, [Args]};
 mfa(#{module := Module, client_result := Args, ref := TaskRef, respond_to := RespondTo}, on_success) ->
   {Module, on_success, [Args, TaskRef, RespondTo]};
 mfa(#{module := Module, client_error := Args, ref := TaskRef, respond_to := RespondTo} = Task, on_error) ->
