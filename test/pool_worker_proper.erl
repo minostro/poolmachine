@@ -7,7 +7,7 @@ prop_run_good_task() ->
       Task = poolmachine_task:new(#{module => Module, args => Args, respond_to => self()}),
       TaskRef = poolmachine_task:ref(Task),
 
-      {ok, Pid} = poolmachine_pool_worker:start(),
+      {ok, Pid} = poolmachine_pool_worker:start(fun() -> {ok, undefined} end),
       poolmachine_pool_worker:run(Pid, Task),
 
       TestResult = receive
@@ -25,7 +25,7 @@ prop_run_bad_task() ->
   ?FORALL({Module, Args}, {bad_task, list(any())},
     begin
       Task = poolmachine_task:new(#{module => Module, args => Args, respond_to => self()}),
-      {ok, Pid} = poolmachine_pool_worker:start(),
+      {ok, Pid} = poolmachine_pool_worker:start(fun() -> {ok, undefined} end),
       TaskRef = poolmachine_task:ref(Task),
 
       poolmachine_pool_worker:run(Pid, Task),

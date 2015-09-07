@@ -1,10 +1,10 @@
 -module(good_task).
 -behaviour(poolmachine_task_behaviour).
 
--export([call/1, on_success/3, on_error/4]).
+-export([call/2, on_success/3, on_error/4]).
 
-call(Arguments) ->
-  {ok, [Arguments] ++ ["test"]}.
+call(Arguments, _State) ->
+  {ok, Arguments ++ ["test"]}.
 
 on_success(Result, TaskRef, RespondTo) ->
   RespondTo ! {TaskRef, {success, Result}}.

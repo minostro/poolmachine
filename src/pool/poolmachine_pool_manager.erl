@@ -8,7 +8,8 @@
   pool_worker_sup_pid => undefined | pid(),
   active_workers => map(),
   active_workers_count => 0,
-  queue => list()
+  queue => list(),
+  worker_init_function => fun()
 }.
 
 
@@ -46,7 +47,8 @@ init([PoolSupPid, ControllerPid, PoolName, PropertyMap]) ->
     pool_worker_sup_pid => undefined,
     active_workers => #{},
     active_workers_count => 0,
-    queue => []
+    queue => [],
+    worker_init_function => fun() -> {ok, undefined} end
   },
   {ok, maps:merge(State, PropertyMap)}.
 
@@ -124,8 +126,11 @@ handle_start_pool_worker_sup(#{pool_sup_pid := PoolSupPid} = State) ->
   link(Pid),
   {noreply, State#{pool_worker_sup_pid => Pid}}.
 
-run_task(Task, #{pool_worker_sup_pid := SupPid, active_workers := Workers, active_workers_count := Count} = State) ->
-  {ok, Pid} = poolmachine_pool_worker_sup:start_child(SupPid),
+run_task(Task, #{pool_worker_sup_pid   := SupPid,
+                 active_workers        := Workers,
+                 active_workers_count  := Count,
+                 worker_init_function  := WorkerInitFunction} = State) ->
+  {ok, Pid} = poolmachine_pool_worker_sup:start_child(SupPid, WorkerInitFunction),
   Ref = monitor(process, Pid),
   NewTask = poolmachine_task:increase_attempt(Task),
   poolmachine_pool_worker:run(Pid, NewTask),

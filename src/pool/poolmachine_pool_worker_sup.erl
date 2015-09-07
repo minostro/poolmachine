@@ -6,7 +6,7 @@
 -export([start_link/0]).
 
 %% Supervisor callbacks
--export([init/1, start_child/1]).
+-export([init/1, start_child/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -17,8 +17,8 @@
 start_link() ->
   supervisor:start_link(?MODULE, []).
 
-start_child(Pid) ->
-  supervisor:start_child(Pid, []).
+start_child(Pid, InitFunction) ->
+  supervisor:start_child(Pid, [InitFunction]).
 %%====================================================================
 %% Supervisor callbacks
 %%====================================================================

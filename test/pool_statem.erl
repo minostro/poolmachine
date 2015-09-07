@@ -100,7 +100,7 @@ ensure_enqueued_tasks_were_ran(ProxyPid, [Task | Rest]) ->
   handle_postcondition_run(#{proxy_pid => ProxyPid}, RunningMode, Task),
   ensure_enqueued_tasks_were_ran(ProxyPid, Rest).
 
-prop_task() ->
+prop_pool() ->
   ?FORALL(Cmds, commands(?MODULE),
     ?TRAPEXIT(
       begin
@@ -116,7 +116,8 @@ prop_task() ->
   ).
 
 %%% Helper Functions
-%%% This is crazy stuff. Unfortunately, I don't how to do this better :(
+%%% FIXME: This is crazy stuff. Unfortunately, I don't know
+%%% how to do this in a better way :(
 init() ->
   pool(start),
   proxy(start).
@@ -124,7 +125,6 @@ init() ->
 cleanup() ->
   pool(stop),
   proxy(stop).
-
 
 pool(start) ->
   {ok, PoolPid} = poolmachine_pool:start_link(self(), ?POOL_MANAGER_NAME, #{max_pool_size => ?INITIAL_CAPACITY}),
@@ -148,11 +148,11 @@ proxy(stop) ->
 
 proxy(Pid, result, Task) ->
   %%% Waiting a little bit, so workers are done.
-  timer:sleep(3),
+  timer:sleep(5),
   Pid ! {result, self(), poolmachine_task:ref(Task)},
   receive
     Msg -> Msg
-  after 1 ->
+  after 5 ->
     error
   end.
 
